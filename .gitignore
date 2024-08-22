@@ -1,0 +1,4 @@
+third_party/ctemplate/
+.vscode/
+compile_server
+oj_server

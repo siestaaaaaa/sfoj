@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{id}}.{{name}} - SFOJ</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ace.js" type="text/javascript"
+        charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ext-language_tools.js" type="text/javascript"
+        charset="utf-8"></script>
+    <script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        .container .navbar {
+            width: 100%;
+            height: 50px;
+            background-color: black;
+            overflow: hidden;
+        }
+
+        .container .navbar a {
+            display: inline-block;
+            width: 80px;
+            color: white;
+            font-size: large;
+            line-height: 50px;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .container .navbar a:hover {
+            background-color: green;
+        }
+
+        .container .navbar .login {
+            float: right;
+        }
+
+        .container .part1 {
+            width: 100%;
+            height: 550px;
+            overflow: hidden;
+        }
+
+        .container .part1 .left_description {
+            width: 40%;
+            height: 550px;
+            float: left;
+            overflow: scroll;
+        }
+
+        .container .part1 .left_description h3 {
+            padding-top: 25px;
+            padding-left: 15px;
+        }
+
+        .container .part1 .left_description pre {
+            padding-top: 30px;
+            padding-left: 15px;
+            font-size: medium;
+            font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        }
+
+        .container .part1 .right_code {
+            padding-top: 15px;
+            width: 60%;
+            float: right;
+        }
+
+        .container .part1 .right_code .ace_editor {
+            height: 550px;
+        }
+
+        .container .part2 {
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .container .part2 .result {
+            width: 40%;
+            float: left;
+        }
+
+        .container .part2 .btn-submit {
+            width: 120px;
+            height: 50px;
+            font-size: large;
+            float: right;
+            background-color: #26bb9c;
+            color: #FFF;
+            border-radius: 1ch;
+            border: 0px;
+            margin-top: 15px;
+            margin-right: 15px;
+        }
+
+        .container .part2 button:hover {
+            color: green;
+        }
+
+        .container .part2 .result {
+            margin-top: 15px;
+            margin-left: 15px;
+        }
+
+        .container .part2 .result pre {
+            font-size: large;
+        }
+
+        .green-text {
+            color: green;
+        }
+
+        .red-text {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="navbar">
+            <a href="/">首页</a>
+            <a href="/problemset">题库</a>
+            <a href="#">竞赛</a>
+            <a href="#">讨论</a>
+            <a href="#">求职</a>
+            <a class="login" href="#">登录</a>
+        </div>
+
+        <div class="part1">
+            <div class="left_description">
+                <h3><span id="id">{{id}}</span>.{{name}} {{level}}</h3>
+                <pre>{{description}}</pre>
+            </div>
+            <div class="right_code">
+                <pre id="code" class="ace_editor"><textarea class="ace_text-input">{{solution}}</textarea></pre>
+            </div>
+        </div>
+
+        <div class="part2">
+            <div class="result"></div>
+            <button class="btn-submit" onclick="submit()">提交</button>
+        </div>
+    </div>
+    <script>
+        editor = ace.edit("code");
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/c_cpp");
+        editor.setFontSize(16);
+        editor.getSession().setTabSize(4);
+        editor.setReadOnly(false);
+        ace.require("ace/ext/language_tools");
+        editor.setOptions({
+            enableBasicAutocompletion: true,
+            enableSnippets: true,
+            enableLiveAutocompletion: true
+        });
+        function submit() {
+            var code = editor.getSession().getValue();
+            var id = $(".container .part1 .left_description h3 #id").text();
+            var judge_url = "/judge/" + id;
+            $.ajax({
+                method: 'Post',
+                url: judge_url,
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    'code': code,
+                }),
+                success: function (data) {
+                    show_result(data);
+                }
+            });
+            function show_result(data) {
+                var result_div = $(".container .part2 .result");
+                result_div.empty();
+                var _result = data.result;
+                var _info = data.info;
+                var result_label = $("<p>", {
+                    text: _result
+                });
+                var info_label = $("<p>", {
+                    text: _info
+                });
+                result_label.addClass(_result === "Finished" ? "green-text" : "red-text");
+                result_label.appendTo(result_div);
+                info_label.appendTo(result_div);
+                if (_result === "Finished") {
+                    var _stdout = data.stdout;
+                    var _stderr = data.stderr;
+                    var stdout_label = $("<pre>", {
+                        text: _stdout
+                    });
+                    var stderr_label = $("<pre>", {
+                        text: _stderr
+                    });
+                    result_label.appendTo(result_div);
+                    info_label.appendTo(result_div);
+                    stdout_label.appendTo(result_div);
+                    stderr_label.appendTo(result_div);
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

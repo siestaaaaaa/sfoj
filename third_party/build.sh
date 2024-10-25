@@ -16,3 +16,5 @@ else
 fi
 
 echo "please do: export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PWD}/ctemplate/.libs"
+
+

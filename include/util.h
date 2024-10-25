@@ -18,14 +18,6 @@ const std::string temp_path = "./temp/";
 
 class path_util {
  public:
-  static std::string to_path(const std::string& filename,
-                             const std::string& suffix) {
-    auto res = temp_path;
-    res += filename;
-    res += suffix;
-    return res;
-  }
-
   static std::string src(const std::string& filename) {
     return to_path(filename, ".cpp");
   }
@@ -48,6 +40,15 @@ class path_util {
   static std::string _stderr(const std::string& filename) {
     return to_path(filename, ".stderr");
   }
+
+ private:
+  static std::string to_path(const std::string& filename,
+                             const std::string& suffix) {
+    auto res = temp_path;
+    res += filename;
+    res += suffix;
+    return res;
+  }
 };
 
 class time_util {
@@ -61,12 +62,11 @@ class time_util {
                              cur->tm_year + 1900, cur->tm_mon + 1, cur->tm_mday,
                              cur->tm_hour, cur->tm_min, cur->tm_sec);
     buf.resize(len);
-    buf.shrink_to_fit();
     return buf;
   }
 
   static std::string get_time_stamp_ms() {
-    struct timeval _time;
+    timeval _time;
     gettimeofday(&_time, nullptr);
     return std::to_string(_time.tv_sec * 1000 + _time.tv_usec / 1000);
   }
@@ -76,7 +76,9 @@ class file_util {
  public:
   static bool is_exist(const std::string path) {
     struct stat st;
-    if (stat(path.c_str(), &st) == 0) return true;
+    if (stat(path.c_str(), &st) == 0) {
+      return true;
+    }
     return false;
   }
 
@@ -88,17 +90,21 @@ class file_util {
     return ms + "." + uid;
   }
 
-  static bool write_file(const std::string& path, const std::string& in) {
+  static bool write(const std::string& path, const std::string& in) {
     std::ofstream ofs(path);
-    if (!ofs.is_open()) return false;
+    if (!ofs.is_open()) {
+      return false;
+    }
     ofs.write(in.c_str(), in.size());
     ofs.close();
     return true;
   }
 
-  static bool read_file(const std::string& path, std::string& out) {
+  static bool read(const std::string& path, std::string& out) {
     std::ifstream ifs(path);
-    if (!ifs.is_open()) return false;
+    if (!ifs.is_open()) {
+      return false;
+    }
     std::string line;
     while (std::getline(ifs, line)) {
       out += line;
@@ -114,8 +120,11 @@ class string_util {
                     char sep = ' ') {
     std::stringstream ssin(s);
     std::string t;
-    while (std::getline(ssin, t, sep))
-      if (!t.empty()) res.push_back(t);
+    while (std::getline(ssin, t, sep)) {
+      if (!t.empty()) {
+        res.push_back(t);
+      }
+    }
   }
 };
 

@@ -1,7 +1,6 @@
 class Solution {
 public:
-    void sortArray(vector<int>& arr) 
-    {
+    void sortArray(vector<int>& arr) {
         
     }
 };

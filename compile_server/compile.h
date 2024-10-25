@@ -18,13 +18,13 @@ class compiler {
       LOG(ERROR) << "fork() failed\n";
       return false;
     } else if (pid == 0) {
-      auto _compile_error = open(path_util::compile_error(filename).c_str(),
-                                 O_CREAT | O_WRONLY | O_TRUNC, 0644);
-      if (_compile_error < 0) {
+      auto compile_error_fd = open(path_util::compile_error(filename).c_str(),
+                                   O_CREAT | O_WRONLY | O_TRUNC, 0644);
+      if (compile_error_fd < 0) {
         LOG(WARNING) << "open() failed\n";
         exit(1);
       }
-      dup2(_compile_error, 2);
+      dup2(compile_error_fd, 2);
 
       execlp("g++", "g++", path_util::src(filename).c_str(), "-o",
              path_util::exe(filename).c_str(), "-std=c++17", nullptr);

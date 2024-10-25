@@ -60,11 +60,10 @@ class model {
       resource_path += pblm.id_;
       resource_path += "/";
 
-      file_util::read_file(resource_path + "description.txt",
-                           pblm.description_);
-      file_util::read_file(problem_path + "header.cpp", pblm.header_);
-      file_util::read_file(resource_path + "solution.cpp", pblm.solution_);
-      file_util::read_file(resource_path + "test.cpp", pblm.test_);
+      file_util::read(resource_path + "description.txt", pblm.description_);
+      file_util::read(problem_path + "header.cpp", pblm.header_);
+      file_util::read(resource_path + "solution.cpp", pblm.solution_);
+      file_util::read(resource_path + "test.cpp", pblm.test_);
 
       problemset[pblm.id_] = pblm;
     }
@@ -89,7 +88,9 @@ class model {
     }
 
     std::vector<problem> res;
-    for (const auto& [id, problem] : problemset) res.push_back(problem);
+    for (const auto& [id, problem] : problemset) {
+      res.push_back(problem);
+    }
     return res;
   }
 };

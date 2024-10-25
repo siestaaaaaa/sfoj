@@ -93,27 +93,24 @@ class scheduler {
   }
 
   std::optional<std::tuple<int, machine*>> select() {
-    {
-      std::unique_lock<std::mutex> lock(mtx_);
-      if (online_.empty()) {
-        lock.unlock();
-        LOG(FATAL) << "all machines are offline\n";
-        return {};
-      }
-
-      auto id = online_[0];
-      auto m = &machines_[id];
-      auto min_usage = machines_[id].get_usage();
-      for (size_t i = 0; i < online_.size(); ++i) {
-        auto tmp = machines_[online_[i]].get_usage();
-        if (min_usage > tmp) {
-          min_usage = tmp;
-          id = online_[i];
-          m = &machines_[online_[i]];
-        }
-      }
-      return std::make_tuple(id, m);
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (online_.empty()) {
+      LOG(FATAL) << "all machines are offline\n";
+      return {};
     }
+
+    auto id = online_[0];
+    auto m = &machines_[id];
+    auto min_usage = machines_[id].get_usage();
+    for (size_t i = 0; i < online_.size(); ++i) {
+      auto tmp = machines_[online_[i]].get_usage();
+      if (min_usage > tmp) {
+        min_usage = tmp;
+        id = online_[i];
+        m = &machines_[online_[i]];
+      }
+    }
+    return std::make_tuple(id, m);
   }
 
   void online() {
@@ -168,49 +165,50 @@ class controller {
   }
 
   std::string judge(const std::string& id, const std::string& in_json) {
-    std::string res;
-
     auto pblm = model_.get_one_problem(id);
-    if (pblm.has_value()) {
-      Json::Value in_val, out_val;
-
-      Json::Reader reader;
-      reader.parse(in_json, in_val);
-
-      auto solution = in_val["code"].asString();
-      out_val["code"] = pblm.value().header_ + solution + pblm.value().test_;
-
-      out_val["cpu_limit"] = pblm.value().cpu_limit_;
-      out_val["mem_limit"] = pblm.value().mem_limit_;
-
-      Json::FastWriter writer;
-      auto out_json = writer.write(out_val);
-
-      while (true) {
-        auto _ = scheduler_.select();
-        if (!_.has_value()) break;
-
-        auto [id, m] = _.value();
-        LOG(INFO) << "scheduler select " << m->ip_ << ':' << m->port_
-                  << ", usage: " << m->get_usage() << '\n';
-
-        httplib::Client clnt(m->ip_.c_str(), m->port_);
-        m->usage_up();
-        if (auto rsps = clnt.Post("/compile_run", out_json,
-                                  "application/json; charset=utf-8")) {
-          m->usage_down();
-          if (rsps->status == 200) {
-            res = rsps->body;
-            LOG(INFO) << "request compile_run success\n";
-            break;
-          }
-        } else {
-          LOG(ERROR) << m->ip_ << ':' << m->port_ << " is offline\n";
-          scheduler_.offline(id);
-        }
-      }
+    if (!pblm.has_value()) {
+      return {};
     }
 
+    Json::Value in_val;
+    Json::Reader reader;
+    reader.parse(in_json, in_val);
+
+    Json::Value out_val;
+    auto solution = in_val["code"].asString();
+    out_val["code"] = pblm.value().header_ + solution + pblm.value().test_;
+    out_val["cpu_limit"] = pblm.value().cpu_limit_;
+    out_val["mem_limit"] = pblm.value().mem_limit_;
+
+    Json::FastWriter writer;
+    auto out_json = writer.write(out_val);
+
+    std::string res;
+    while (true) {
+      auto _ = scheduler_.select();
+      if (!_.has_value()) {
+        break;
+      }
+
+      auto [id, m] = _.value();
+      LOG(INFO) << "scheduler select " << m->ip_ << ':' << m->port_
+                << ", usage: " << m->get_usage() << '\n';
+
+      httplib::Client clnt(m->ip_.c_str(), m->port_);
+      m->usage_up();
+      if (auto rsps = clnt.Post("/compile_run", out_json,
+                                "application/json; charset=utf-8")) {
+        m->usage_down();
+        if (rsps->status == 200) {
+          res = rsps->body;
+          LOG(INFO) << "request compile_run success\n";
+          break;
+        }
+      } else {
+        LOG(ERROR) << m->ip_ << ':' << m->port_ << " is offline\n";
+        scheduler_.offline(id);
+      }
+    }
     return res;
   }
 };

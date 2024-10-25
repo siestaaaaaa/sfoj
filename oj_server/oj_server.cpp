@@ -3,17 +3,15 @@
 #include "../include/httplib.h"
 #include "oj_controller.h"
 
-namespace {
 oj_controller::controller* ctrl_ptr;
-void handler(int) { ctrl_ptr->online_service(); }
-}  // namespace
+void online(int) { ctrl_ptr->online_service(); }
 
 int main() {
   httplib::Server svr;
+
   oj_controller::controller ctrl;
   ctrl_ptr = &ctrl;
-
-  signal(SIGQUIT, handler); /* Ctrl+\ */
+  signal(SIGQUIT, online); /* Ctrl+\ */
 
   svr.Get("/problemset",
           [&](const httplib::Request& rqst, httplib::Response& rsps) {

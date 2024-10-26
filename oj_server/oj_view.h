@@ -7,34 +7,34 @@
 namespace oj_view {
 using namespace oj_model;
 
-const std::string template_html_path = "./template_html/";
-
 class view {
- public:
-  void expand(const problem& pblm, std::string& output) {
-    auto path = template_html_path + "problem.html";
-    ctemplate::TemplateDictionary root("problem");
-    root.SetValue("id", pblm.id_);
-    root.SetValue("name", pblm.name_);
-    root.SetValue("level", pblm.level_);
-    root.SetValue("description", pblm.description_);
-    root.SetValue("solution", pblm.solution_);
+  static inline const std::string template_html_path = "./template_html/";
 
+ public:
+  void expand(const problem& problem, std::string& output) {
+    ctemplate::TemplateDictionary root("problem");
+    root.SetValue("id", problem.id_);
+    root.SetValue("name", problem.name_);
+    root.SetValue("level", problem.level_);
+    root.SetValue("description", problem.description_);
+    root.SetValue("solution", problem.solution_);
+
+    auto path = template_html_path + "problem.html";
     auto templ =
         ctemplate::Template::GetTemplate(path, ctemplate::DO_NOT_STRIP);
     templ->Expand(&output, &root);
   }
 
-  void expand(const std::vector<problem>& plbmst, std::string& output) {
-    auto path = template_html_path + "problemset.html";
+  void expand(const std::vector<problem>& problemset, std::string& output) {
     ctemplate::TemplateDictionary root("problemset");
-    for (const auto& pblm : plbmst) {
+    for (const auto& problem : problemset) {
       auto t = root.AddSectionDictionary("problem_list");
-      t->SetValue("id", pblm.id_);
-      t->SetValue("name", pblm.name_);
-      t->SetValue("level", pblm.level_);
+      t->SetValue("id", problem.id_);
+      t->SetValue("name", problem.name_);
+      t->SetValue("level", problem.level_);
     }
 
+    auto path = template_html_path + "problemset.html";
     auto templ =
         ctemplate::Template::GetTemplate(path, ctemplate::DO_NOT_STRIP);
     templ->Expand(&output, &root);

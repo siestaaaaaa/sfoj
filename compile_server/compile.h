@@ -18,7 +18,7 @@ class compiler {
       LOG(ERROR) << "fork() failed\n";
       return false;
     } else if (pid == 0) {
-      auto compile_error_fd = open(path_util::compile_error(filename).c_str(),
+      auto compile_error_fd = open(path_util::compile_error_path(filename).c_str(),
                                    O_CREAT | O_WRONLY | O_TRUNC, 0644);
       if (compile_error_fd < 0) {
         LOG(WARNING) << "open() failed\n";
@@ -26,14 +26,14 @@ class compiler {
       }
       dup2(compile_error_fd, 2);
 
-      execlp("g++", "g++", path_util::src(filename).c_str(), "-o",
-             path_util::exe(filename).c_str(), "-std=c++17", nullptr);
+      execlp("g++", "g++", path_util::src_path(filename).c_str(), "-o",
+             path_util::exe_path(filename).c_str(), "-std=c++17", nullptr);
 
       LOG(ERROR) << "execlp() failed\n";
       exit(2);
     } else {
       waitpid(pid, nullptr, 0);
-      if (file_util::is_exist(path_util::exe(filename))) {
+      if (file_util::is_exist(path_util::exe_path(filename))) {
         LOG(INFO) << "compile() finished\n";
         return true;
       }

@@ -24,11 +24,11 @@ struct problem {
   std::string test_;
 };
 
-const std::string problem_path = "./problem/";
-const std::string problem_list_path = "./problem/problem_list.conf";
-
 class model {
   std::map<std::string, problem> problemset;
+
+  static inline const std::string problem_path = "./problem/";
+  static inline const std::string problem_list_path = "./problem/problem_list.conf";
 
  public:
   model() { assert(load_problem_list()); }
@@ -49,30 +49,30 @@ class model {
         continue;
       }
 
-      problem pblm;
-      pblm.id_ = tokens[0];
-      pblm.name_ = tokens[1];
-      pblm.level_ = tokens[2];
-      pblm.cpu_limit_ = std::stoi(tokens[3]);
-      pblm.mem_limit_ = std::stoi(tokens[4]) * 1024;
+      problem problem;
+      problem.id_ = tokens[0];
+      problem.name_ = tokens[1];
+      problem.level_ = tokens[2];
+      problem.cpu_limit_ = std::stoi(tokens[3]);
+      problem.mem_limit_ = std::stoi(tokens[4]) * 1024;
 
       auto resource_path = problem_path;
-      resource_path += pblm.id_;
+      resource_path += problem.id_;
       resource_path += "/";
 
-      file_util::read(resource_path + "description.txt", pblm.description_);
-      file_util::read(problem_path + "header.cpp", pblm.header_);
-      file_util::read(resource_path + "solution.cpp", pblm.solution_);
-      file_util::read(resource_path + "test.cpp", pblm.test_);
+      file_util::read_from_path(resource_path + "description.txt", problem.description_);
+      file_util::read_from_path(problem_path + "header.cpp", problem.header_);
+      file_util::read_from_path(resource_path + "solution.cpp", problem.solution_);
+      file_util::read_from_path(resource_path + "test.cpp", problem.test_);
 
-      problemset[pblm.id_] = pblm;
+      problemset[problem.id_] = problem;
     }
     ifs.close();
     LOG(INFO) << "load_problem_list() finished\n";
     return true;
   }
 
-  std::optional<problem> get_one_problem(const std::string& id) {
+  std::optional<problem> get_problem(const std::string& id) {
     if (problemset.count(id) == 0) {
       LOG(ERROR) << "problem " << id << " not found\n";
       return {};
@@ -81,7 +81,7 @@ class model {
     return problemset[id];
   }
 
-  std::optional<std::vector<problem>> get_all_problem() {
+  std::optional<std::vector<problem>> get_problemset() {
     if (problemset.empty()) {
       LOG(ERROR) << "problemset is empty\n";
       return {};

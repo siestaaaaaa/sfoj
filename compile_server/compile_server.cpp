@@ -11,11 +11,11 @@ int main(int argc, char* argv[]) {
 
   httplib::Server svr;
   svr.Post("/compile_run",
-           [](const httplib::Request& rqst, httplib::Response& rsps) {
-             auto in_json = rqst.body;
+           [](const httplib::Request& rq, httplib::Response& rp) {
+             auto in_json = rq.body;
              if (!in_json.empty()) {
                auto out_json = compile_and_run::start(in_json);
-               rsps.set_content(out_json, "application/json; charset=utf-8");
+               rp.set_content(out_json, "application/json; charset=utf-8");
              }
            });
   svr.listen("0.0.0.0", atoi(argv[1]));

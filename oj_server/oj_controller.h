@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <tuple>
 
 #include "../include/httplib.h"
@@ -51,48 +52,19 @@ struct machine {
   }
 };
 
-const std::string machine_list_path = "./conf/machine_list.conf";
-
 class scheduler {
   std::vector<machine> machines_;
   std::vector<int> online_;
   std::vector<int> offline_;
   std::mutex mtx_;
 
+  static inline const std::string machine_list_path = "./conf/machine_list.conf";
+
  public:
   scheduler() { assert(load_machine_list()); }
 
-  bool load_machine_list() {
-    std::ifstream ifs(machine_list_path);
-    if (!ifs.is_open()) {
-      LOG(FATAL) << "machine_list.conf not found\n";
-      return false;
-    }
-
-    std::string line;
-    while (std::getline(ifs, line)) {
-      std::vector<std::string> tokens;
-      string_util::split(line, tokens, ':');
-      if (tokens.size() != 2) {
-        LOG(WARNING) << "machine_list.conf format invalid\n";
-        continue;
-      }
-
-      machine m;
-      m.ip_ = tokens[0];
-      m.port_ = std::stoi(tokens[1]);
-      m.usage_ = 0;
-      m.pmtx_ = std::make_shared<std::mutex>();
-
-      online_.push_back(machines_.size());
-      machines_.push_back(m);
-    }
-    ifs.close();
-    LOG(INFO) << "load_machine_list() finished\n";
-    return true;
-  }
-
-  std::optional<std::tuple<int, machine*>> select() {
+  std::optional<std::tuple<int, machine*>>
+  select() {
     std::lock_guard<std::mutex> lock(mtx_);
     if (online_.empty()) {
       LOG(FATAL) << "all machines are offline\n";
@@ -127,6 +99,37 @@ class scheduler {
       offline_.push_back(id);
     }
   }
+
+ private:
+  bool load_machine_list() {
+    std::ifstream ifs(machine_list_path);
+    if (!ifs.is_open()) {
+      LOG(FATAL) << "machine_list.conf not found\n";
+      return false;
+    }
+
+    std::string line;
+    while (std::getline(ifs, line)) {
+      std::vector<std::string> tokens;
+      string_util::split(line, tokens, ':');
+      if (tokens.size() != 2) {
+        LOG(WARNING) << "machine_list.conf format invalid\n";
+        continue;
+      }
+
+      machine m;
+      m.ip_ = tokens[0];
+      m.port_ = std::stoi(tokens[1]);
+      m.usage_ = 0;
+      m.pmtx_ = std::make_shared<std::mutex>();
+
+      online_.push_back(machines_.size());
+      machines_.push_back(m);
+    }
+    ifs.close();
+    LOG(INFO) << "load_machine_list() finished\n";
+    return true;
+  }
 };
 
 class controller {
@@ -142,9 +145,9 @@ class controller {
 
   std::string get_problem(const std::string& id) {
     std::string res;
-    auto pblm = model_.get_one_problem(id);
-    if (pblm.has_value()) {
-      view_.expand(pblm.value(), res);
+    auto problem = model_.get_problem(id);
+    if (problem.has_value()) {
+      view_.expand(problem.value(), res);
     } else {
       res = "problem ";
       res += id;
@@ -155,9 +158,9 @@ class controller {
 
   std::string get_problemset() {
     std::string res;
-    auto pblmst = model_.get_all_problem();
-    if (pblmst.has_value()) {
-      view_.expand(pblmst.value(), res);
+    auto problemset = model_.get_problemset();
+    if (problemset.has_value()) {
+      view_.expand(problemset.value(), res);
     } else {
       res = "problemset not found\n";
     }
@@ -165,8 +168,8 @@ class controller {
   }
 
   std::string judge(const std::string& id, const std::string& in_json) {
-    auto pblm = model_.get_one_problem(id);
-    if (!pblm.has_value()) {
+    auto problem = model_.get_problem(id);
+    if (!problem.has_value()) {
       return {};
     }
 
@@ -176,9 +179,9 @@ class controller {
 
     Json::Value out_val;
     auto solution = in_val["code"].asString();
-    out_val["code"] = pblm.value().header_ + solution + pblm.value().test_;
-    out_val["cpu_limit"] = pblm.value().cpu_limit_;
-    out_val["mem_limit"] = pblm.value().mem_limit_;
+    out_val["code"] = problem.value().header_ + solution + problem.value().test_;
+    out_val["cpu_limit"] = problem.value().cpu_limit_;
+    out_val["mem_limit"] = problem.value().mem_limit_;
 
     Json::FastWriter writer;
     auto out_json = writer.write(out_val);
@@ -194,15 +197,17 @@ class controller {
       LOG(INFO) << "scheduler select " << m->ip_ << ':' << m->port_
                 << ", usage: " << m->get_usage() << '\n';
 
-      httplib::Client clnt(m->ip_.c_str(), m->port_);
+      httplib::Client cli(m->ip_.c_str(), m->port_);
       m->usage_up();
-      if (auto rsps = clnt.Post("/compile_run", out_json,
+      if (auto rp = cli.Post("/compile_run", out_json,
                                 "application/json; charset=utf-8")) {
         m->usage_down();
-        if (rsps->status == 200) {
-          res = rsps->body;
+        if (rp->status == 200) {
           LOG(INFO) << "request compile_run success\n";
+          res = rp->body;
           break;
+        } else {
+          LOG(INFO) << "request compile_run failed\n";
         }
       } else {
         LOG(ERROR) << m->ip_ << ':' << m->port_ << " is offline\n";

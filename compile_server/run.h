@@ -19,9 +19,9 @@ class runner {
   // == 0: ok
   static int start(const std::string& filename, int cpu_limit,
                    int mem_limit /*KB*/) {
-    auto stdin_path = path_util::_stdin(filename);
-    auto stdout_path = path_util::_stdout(filename);
-    auto stderr_path = path_util::_stderr(filename);
+    auto stdin_path = path_util::stdin_path(filename);
+    auto stdout_path = path_util::stdout_path(filename);
+    auto stderr_path = path_util::stderr_path(filename);
 
     auto stdin_fd = open(stdin_path.c_str(), O_CREAT | O_RDONLY, 0644);
     auto stdout_fd = open(stdout_path.c_str(), O_CREAT | O_WRONLY, 0644);
@@ -43,9 +43,10 @@ class runner {
       dup2(stdin_fd, 0);
       dup2(stdout_fd, 1);
       dup2(stderr_fd, 2);
+      
       set_limit(cpu_limit, mem_limit);
 
-      auto exe_path = path_util::exe(filename);
+      auto exe_path = path_util::exe_path(filename);
       execl(exe_path.c_str(), exe_path.c_str(), nullptr);
 
       LOG(ERROR) << "execl() failed\n";
